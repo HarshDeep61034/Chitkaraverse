@@ -64,6 +64,11 @@ io.on("connection", (socket) => {
       .except(socket.id)
       .emit("player-moved", data);
   });
+
+  socket.on("player-stopped", (data: dataprop)=>{
+    io.except(socket.id).to(data.roomId+"").emit("player-stopped", data);
+  })
+
   console.log("connected");
 
   socket.on("disconnect", () => {
