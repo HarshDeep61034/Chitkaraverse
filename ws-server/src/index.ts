@@ -1,71 +1,86 @@
 import { createServer } from "http";
-import {Server} from "socket.io";
-import dotenv from "dotenv"
+import { Server } from "socket.io";
+import dotenv from "dotenv";
 import express from "express";
-dotenv.config()
+dotenv.config();
 
-const PORT =  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 const httpServer = createServer(app);
 const GLOBALROOMID = process.env.GLOBALROOMID || "1234";
 
-interface playerContext {
-    id: number;
-    x: number;
-    y: number;
-}
-
-
 interface dataprop {
-    roomId: number;
-    user: { name: string; id: number };
-    playerCoordinates: { x: number; y: number };
+  roomId: number;
+  user: { name: string; id: number };
+  playerCoordinates: { x: number; y: number };
 }
 
-
-let playersPositionContext: playerContext[] = [];
+let playersPositionContext = new Map<number, { x: number; y: number, socketId: string }>();
 
 const io = new Server(httpServer, {
-    cors: {
-        methods: "*",
-        origin: "*"
+  cors: {
+    methods: "*",
+    origin: "*",
+  },
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: 200, success: true, health: "OK" });
+});
+
+io.on("connection", (socket) => {
+  socket.on("join", (data) => {
+    console.log(`${data.user.name} Joined the Room ${data.roomId}`);
+    socket.join(data.roomId);
+
+    const playersPos = Array.from(playersPositionContext.entries()).map(([id, pos]) => ({
+        roomId: data.roomId, // Use the roomId from the join data
+        user: { name: `Player${id}`, id }, // You might want to adjust this based on your actual user data
+        playerCoordinates: { x: pos.x, y: pos.y },
+    }));
+
+    console.log("Players Position Context:", playersPos); // Log the data being sent
+
+    io.to(socket.id).emit("players-context", playersPos);
+    io.to(data.roomId).except(socket.id).emit("join", data);
+    io.to(data.roomId).emit("message", {
+      type: "message",
+      message: `${data.user.name} Joined the Room ${data.roomId}`,
+    });
+  });
+
+  socket.on("player-moved", (data: dataprop) => {
+    if (playersPositionContext.get(data.user.id)) {
+      let player = playersPositionContext.get(data.user.id);
+      player!.x = data.playerCoordinates.x;
+      player!.y = data.playerCoordinates.y;
+      playersPositionContext.set(data.user.id, player!);
+    } else {
+      playersPositionContext.set(data.user.id, { x: 200, y: 128, socketId: socket.id });
     }
-})
+    
+    io.to(data.roomId + "")
+      .except(socket.id)
+      .emit("player-moved", data);
+  });
+  console.log("connected");
 
-app.get("/health", (req, res)=>{
-    res.json({status: 200, success: true, health: "OK"})
-})
+  socket.on("disconnect", () => {
+    // Remove player by socket ID
+    for (let [userId, pos] of playersPositionContext.entries()) {
+      if (pos.socketId === socket.id) {
+        playersPositionContext.delete(userId); // Remove player by user ID
+        console.log(`Player with ID ${userId} and Socket ID ${socket.id} has disconnected and been removed from context.`);
+        break; // Exit loop after finding and removing the player
+      }
+    }
+  });
 
 
-io.on("connection", (socket)=>{
-    socket.on("join", (data)=>{
-        console.log(`${data.user.name} Joined the Room ${data.roomId}`)
-        socket.join(data.roomId)
-        io.to(data.roomId).except(socket.id).emit('join', data)
-        io.to(data.roomId).emit("message", {type: "message", message: `${data.user.name} Joined the Room ${data.roomId}`})
-    })
-
-    socket.on('player-moved', (data: dataprop)=>{
-        let selectPlayer: playerContext = {id: -1, x: -1, y: -1};
-        let index = -1;
-        playersPositionContext.forEach((player, i)=>{
-            if(player.id as number == data.user.id as number){
-                selectPlayer = player;
-                index=i;
-            }
-        })
-        
-        selectPlayer.x = data.playerCoordinates.x;
-        selectPlayer.y = data.playerCoordinates.y;
-
-        playersPositionContext[index] = selectPlayer;
-        console.log(playersPositionContext);
-        io.to(data.roomId+"").except(socket.id).emit('player-moved', data);
-    })
-    console.log("connected");
-})
+  console.log("connected");
+});
 
 // io.on("disconnect", ()=>console.log("disconnected "))
 
-httpServer.listen(PORT, ()=>console.log("Listening at PORT 3000"));
+httpServer.listen(PORT, () => console.log("Listening at PORT 3000"));
