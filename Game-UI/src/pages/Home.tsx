@@ -13,13 +13,13 @@ const Home = () => {
 
     return (
         <div>
-            <div>
+            <div className="text-white">
                 <h1>Name: {user.name}</h1>
                 <h1>Id: {user.id}</h1>
                 <h1>Home Page</h1>
             </div>
-            <button onClick={() => handleJoin()}>Join Game</button>
-            <button onClick={() => socket.disconnect()}>Elminiate</button>
+            <button className="text-white" onClick={() => handleJoin()}>Join Game</button>
+            <button className="text-white" onClick={() => socket.disconnect()}>Elminiate</button>
         </div>
     );
 };

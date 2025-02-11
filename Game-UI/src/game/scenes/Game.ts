@@ -1,5 +1,6 @@
 // import debugDraw from "../../utils/debugDraw";
-import debugDraw from "../../utils/debugDraw";
+import { socket } from "../../lib/socket";
+// import debugDraw from "../../utils/debugDraw";
 import { EventBus } from "../EventBus";
 import { Scene } from "phaser";
 
@@ -16,10 +17,12 @@ export class Game extends Scene {
     private playerPosition = { x: 0, y: 0 };
     private lastUpdatedTime = 0;
     private isMoving: boolean;
+    private playerInfo: { name: string; id: number } = { name: '', id: 0 };
+    private profileCard: HTMLDivElement | null = null;
 
     constructor() {
         super("Game");
-    }
+    }   
 
 
     create() {
@@ -47,7 +50,11 @@ export class Game extends Scene {
         this.Player.body?.setSize(16, 32);
         // Center the hitbox
         this.Player.body?.setOffset(16, 16);
-        
+        this.playerInfo.name = "Harsh";
+        this.playerInfo.id = 1;
+
+console.log("called profile setup")
+        this.setupPlayerProfile();
         // Start with idle animation
         this.Player.play('idle');
         
@@ -65,6 +72,16 @@ export class Game extends Scene {
            this.setupEventListeners();
 
         EventBus.emit("current-scene-ready", this);
+
+        // Add zoom control
+        this.setupZoomControl();
+
+        // Setup player profile immediately after socket connection
+        socket.emit('get-player-info'); // Request player info from server
+        
+        // Setup player profile
+        
+ 
     }
 
 
@@ -81,37 +98,16 @@ export class Game extends Scene {
 
         // Handle player movement from server
         EventBus.on("player-moved-server", (data: dataprop) => {
-            const allPlayers =
-                this.otherPlayers.getChildren() as Phaser.Physics.Arcade.Sprite[];
+            const allPlayers = this.otherPlayers.getChildren() as Phaser.Physics.Arcade.Sprite[];
             const selectedPlayer = allPlayers.find(
                 (p) => (p.getData("id") as number) === data.user.id
             );
 
             if (selectedPlayer) {
-                const diffX = data.playerCoordinates.x - selectedPlayer.x;
-                const diffY = data.playerCoordinates.y - selectedPlayer.y;
-
                 selectedPlayer.setPosition(
                     data.playerCoordinates.x,
                     data.playerCoordinates.y
                 );
-
-                // console.log(diffX);
-                    if(diffX  == 0){}
-                    else if(diffX > 0){
-                        selectedPlayer.anims.play('walk-right', true)
-                    }
-                    else{
-                        selectedPlayer.anims.play('walk-left', true);
-                    }
-                    if(diffY == 0){}
-                    else if(diffY > 0){
-                        selectedPlayer.anims.play('walk-down', true);
-                    }
-                    else{
-                        selectedPlayer.anims.play('walk-up', true)
-                    }
-
             }
         });
 
@@ -122,6 +118,19 @@ export class Game extends Scene {
 
             selectedPlayer?.anims.play('idle');
         })
+
+        // Listen for player info from socket
+        socket.on('join', (data: dataprop) => {
+            // Update player info when joining
+            this.playerInfo = data.user;
+            this.updateProfileCard();
+        });
+
+        // Also update on player-info event if server sends it separately
+        socket.on('player-info', (info: { name: string; id: number }) => {
+            this.playerInfo = info;
+            this.updateProfileCard();
+        });
     }
 
     addPlayer(data: dataprop) {
@@ -133,9 +142,8 @@ export class Game extends Scene {
             "walk_left_up.png"
         );
         newPlayer.setData("id", data.user.id);
-         // Set a smaller hitbox (16x32 as mentioned)
-         newPlayer.body?.setSize(16, 32);
-         // Center the hitbox
+        newPlayer.setData("name", data.user.name);
+        newPlayer.body?.setSize(16, 32);
         newPlayer.body?.setOffset(16, 16);
         newPlayer.anims.play('idle');
         this.otherPlayers.add(newPlayer);
@@ -145,7 +153,7 @@ export class Game extends Scene {
         this.scene.start("GameOver");
     }
 
-    update(time: number) {
+    update(time: number, delta: number) {
     
         if (this.keys?.down.isDown) {
             this.Player.anims.play("walk-down", true);
@@ -184,10 +192,6 @@ export class Game extends Scene {
             EventBus.emit('player-stopped', {x: this.playerPosition.x, y: this.playerPosition.y});
             this.isMoving = false;
         }
-
-
-
-        // new player joined
     }
 
     private createCharacterAnimations() {
@@ -275,5 +279,89 @@ export class Game extends Scene {
         // });
 
     }
+
+    private setupZoomControl() {
+        // Create container div
+        const container = document.createElement('div');
+        container.className = 'zoom-slider-container';
+        
+        // Create minus icon
+        const minusIcon = document.createElement('span');
+        minusIcon.className = 'zoom-icon';
+        minusIcon.textContent = '🔍-';
+        
+        // Create slider
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.className = 'zoom-slider';
+        slider.min = '0.5';
+        slider.max = '2';
+        slider.step = '0.1';
+        slider.value = '1';
+        
+        // Create plus icon
+        const plusIcon = document.createElement('span');
+        plusIcon.className = 'zoom-icon';
+        plusIcon.textContent = '🔍+';
+        
+        // Add elements to container
+        container.appendChild(minusIcon);
+        container.appendChild(slider);
+        container.appendChild(plusIcon);
+        
+        // Add container to game
+        document.getElementById('game-container')?.appendChild(container);
+        
+        // Add zoom functionality
+        slider.addEventListener('input', (e) => {
+            const target = e.target as HTMLInputElement;
+            const zoom = parseFloat(target.value);
+            this.cameras.main.setZoom(zoom);
+        });
+        
+        // Cleanup on scene shutdown
+        this.events.on('shutdown', () => {
+            container.remove();
+        });
+    }
+
+    private setupPlayerProfile() {
+        console.log("setting up player profile")
+        this.profileCard = document.querySelector('.profile-card');
+        if(!this.profileCard){
+            this.profileCard = document.createElement('div');
+            this.profileCard.className = 'profile-card';
+        }
+        // Initial profile card setup with current info
+        this.updateProfileCard();
+        
+        // add condition that if profile card is not in the document then add it
+        if(!this.profileCard.parentElement){
+            document.getElementById('game-container')?.appendChild(this.profileCard);
+        }
+    
+        // Cleanup on scene shutdown
+        this.events.on('shutdown', () => {
+            this.profileCard?.remove();
+        }); 
+    }
+    
+
+    private updateProfileCard() {
+        console.log("updating profile card")
+        console.log(this.profileCard)
+        if (this.profileCard) {
+            console.log("Updating profile card with:", this.playerInfo);  // Debug log
+            this.profileCard.innerHTML = `
+                <div class='profile-avatar'>👤</div>
+                <div class='profile-info'>
+                    <div class='profile-name'>${this.playerInfo.name || 'Player'}</div>
+                    <div class='profile-id'>ID: ${this.playerInfo.id || 'Unknown'}</div>
+                </div>
+            `;
+        }
+    }
+
+
 }
 

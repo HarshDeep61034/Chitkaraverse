@@ -7,20 +7,24 @@ const Game = () => {
     const navigate = useNavigate();
     const phaserRef = useRef(null);
 
-    function currentScene(){
-        
-    }
+    function currentScene(){}
+
     return (
-        <div>
-            {socket.connected ? <PhaserGame
-                ref={phaserRef}
-                currentActiveScene={currentScene}
-            /> : <h1 style={{textAlign: "center"}} className="">
-                Socket not connected!!
-                <br />
-                <button onClick={()=>navigate("/")}>Home</button>
-            </h1>}
-            
+        <div id="app w-screen h-screen flex justify-center items-center">
+            <div className="game-wrapper">
+                {socket.connected ? (
+                    <PhaserGame
+                        ref={phaserRef}
+                        currentActiveScene={currentScene}
+                    />
+                ) : (
+                    <h1 style={{textAlign: "center"}} className="">
+                        Socket not connected!!
+                        <br />
+                        <button onClick={()=>navigate("/")}>Home</button>
+                    </h1>
+                )}
+            </div>
         </div>
     );
 };

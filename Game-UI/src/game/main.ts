@@ -8,11 +8,11 @@ import { Preloader } from './scenes/Preloader';
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
 const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
-    width: 800,
+    width: 1500,
     height: 600,
     physics: {
         default: 'arcade',
-        arcade: {
+        arcade: { 
             gravity: {y: 0, x: 0},
             // debug: true
         },
