@@ -1,8 +1,8 @@
 // import debugDraw from "../../utils/debugDraw";
-import { socket } from "../../lib/socket";
-// import debugDraw from "../../utils/debugDraw";
-import { EventBus } from "../EventBus";
+import { EventBus } from "../lib/EventBus";
 import { Scene } from "phaser";
+import { socket } from "../lib/socket";
+
 
 interface dataprop {
     roomId: number;
@@ -19,6 +19,7 @@ export class Game extends Scene {
     private isMoving: boolean;
     private playerInfo: { name: string; id: number } = { name: '', id: 0 };
     private profileCard: HTMLDivElement | null = null;
+    
 
     constructor() {
         super("Game");
@@ -50,11 +51,14 @@ export class Game extends Scene {
         this.Player.body?.setSize(16, 32);
         // Center the hitbox
         this.Player.body?.setOffset(16, 16);
-        this.playerInfo.name = "Harsh";
-        this.playerInfo.id = 1;
+        
+        EventBus.emit('get-user');
 
-console.log("called profile setup")
-        this.setupPlayerProfile();
+        // this.playerInfo.name = "Loading...";
+        // this.playerInfo.id = 0;
+
+        // console.log("called profile setup")
+        // this.setupPlayerProfile();
         // Start with idle animation
         this.Player.play('idle');
         
@@ -119,18 +123,24 @@ console.log("called profile setup")
             selectedPlayer?.anims.play('idle');
         })
 
+        EventBus.on('user-info', (data: {name: string, id: number})=>{
+            this.playerInfo = data;
+            this.setupPlayerProfile();
+            
+        })
+
         // Listen for player info from socket
-        socket.on('join', (data: dataprop) => {
-            // Update player info when joining
-            this.playerInfo = data.user;
-            this.updateProfileCard();
-        });
+        // socket.on('join', (data: dataprop) => {
+        //     // Update player info when joining
+        //     this.playerInfo = data.user;
+        //     this.updateProfileCard();
+        // });
 
         // Also update on player-info event if server sends it separately
-        socket.on('player-info', (info: { name: string; id: number }) => {
-            this.playerInfo = info;
-            this.updateProfileCard();
-        });
+        // socket.on('player-info', (info: { name: string; id: number }) => {
+        //     this.playerInfo = info;
+        //     this.updateProfileCard();
+        // });
     }
 
     addPlayer(data: dataprop) {

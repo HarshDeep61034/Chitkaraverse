@@ -1,5 +1,5 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import { PhaserGame } from "../game/PhaserGame";
+import {useRef, useState } from "react";
+import { PhaserGame } from "../components/PhaserGame";
 import { socket } from "../lib/socket";
 import { useNavigate } from "react-router-dom";
 

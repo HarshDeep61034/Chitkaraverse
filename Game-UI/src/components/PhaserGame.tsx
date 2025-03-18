@@ -6,8 +6,8 @@ import {
     useRef,
     useState,
 } from "react";
-import StartGame from "./main";
-import { EventBus } from "./EventBus";
+import StartGame from "../gameConfig/main";
+import { EventBus } from "../lib/EventBus";
 import { socket } from "../lib/socket";
 import { userContext } from "../providers/contextProvider";
 
@@ -149,6 +149,11 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(
                     }
                 }
             );
+
+            EventBus.on("get-user", () => {
+                console.log("Emitting user-info event");
+                EventBus.emit("user-info", user);
+            });
             
             return () => {
                 EventBus.removeListener("current-scene-ready");

@@ -6,7 +6,13 @@
 - webrtc integration for 1 to 1 talks
 
 ## TODOS:
-- [ ] Map
-- [ ] Webrtc call
-- [ ] Game UI with popups and bars
-- [ ] oboarding UI
+- [ ] Refactoring
+- [ ] Player Centralization (feature)
+- [ ] Improve Game Window UI (task)
+- [ ] New Player not getting context of previous ones (bug)
+- [ ] fix character Animation of new player (bug )
+- [ ] Add Sound (feature)
+- [ ] Map (task)
+- [ ] Webrtc call (feature)
+- [ ] Game UI with popups and bars (feature)
+- [ ] oboarding UI (task)

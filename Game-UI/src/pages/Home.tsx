@@ -3,6 +3,7 @@ import { socket } from "../lib/socket";
 import { useContext, useState } from "react";
 import { userContext } from "../providers/contextProvider";
 
+
 const Home = () => {
     const navigate = useNavigate();
     const [user, _setUser] = useContext(userContext);
